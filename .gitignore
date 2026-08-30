@@ -1,0 +1,4 @@
+.opencode-mem/
+.codegraph/
+node_modules/
+.env

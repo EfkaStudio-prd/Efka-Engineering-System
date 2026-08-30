@@ -1,0 +1,138 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // === CORE MODEL — 9Router fallback (700 models) ===
+  "model": "9router/ag/claude-sonnet-4-6",
+  "small_model": "9router/cerebras/gpt-oss-120b",
+  "default_agent": "master-orchestrator",
+  "autoupdate": true,
+  "share": "manual",
+  "snapshot": true,
+  // === 9Router as OpenAI-compatible provider ===
+  // API key diambil dari sqlite ~/.9router/db/data.sqlite apiKeys sk-c5a12068ba317f6e-qta4gv-46d33a60
+  // Setup fallback: semua model 9router dirutekan lewat localhost:20128
+  // Catatan: aktifkan provider di 9Router dashboard (http://127.0.0.1:20128) agar chat tidak error "No active credentials"
+  // 9Router — expose ALL 700 models, no whitelist. opencode fetches via GET /v1/models.
+  // Kamu custom nanti model/model di TUI /models atau via "model": "9router/<id>"
+  "provider": {
+    "9router": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "9Router Gateway",
+      "options": {
+        "baseURL": "http://127.0.0.1:20128/v1",
+        "apiKey": "sk-c5a12068ba317f6e-qta4gv-46d33a60",
+        "timeout": 300000,
+        "chunkTimeout": 60000
+      }
+    }
+  },
+  // === UNLIMITED POLICY ===
+  // permission: allow = tanpa batas ask/deny — kamu minta “tidak ada batasan apapun”
+  "permission": "allow",
+  // compaction OFF = tanpa batas konteks, tidak ada auto-prune
+  "compaction": {
+    "auto": false,
+    "prune": false,
+    "reserved": 50000
+  },
+  "tool_output": {
+    "max_lines": 20000,
+    "max_bytes": 1048576
+  },
+  // === PLUGINS WAJIB ===
+  "plugin": [
+    "opencode-mem",
+    "@dietrichgebert/ponytail",
+    "file:///home/user/.config/opencode/plugins/background-agents.ts",
+    "file:///home/user/.config/opencode/plugins/context-analysis.ts",
+    "file:///home/user/.config/opencode/plugins/self-memory.ts"
+  ],
+  // === SKILLS & REFERENCES ===
+  "skills": {
+    "paths": [".opencode/skills", "~/.config/opencode/skills"]
+  },
+  "instructions": ["AGENTS.md"],
+  "formatter": true,
+  "lsp": true,
+  "subagent_depth": 3,
+  "watcher": { "ignore": ["node_modules/**", ".git/**", "dist/**", ".next/**", "__pycache__/**"] },
+  "experimental": {
+    "primary_tools": ["read", "write", "edit", "bash", "glob", "grep", "task"],
+    "mcp_timeout": 60000
+  },
+  "mcp": {
+    "codegraph": {
+      "type": "local",
+      "command": [
+        "codegraph",
+        "serve",
+        "--mcp"
+      ],
+      "enabled": true
+    },
+    "tabby": {
+      "type": "local",
+      "command": ["npx", "-y", "tabby-mcp"],
+      "enabled": false
+    }, // tabby: enable jika Tabby server jalan di :8080
+    "deep-research": {
+      "type": "local",
+      "command": ["npx", "-y", "local-deep-research-mcp"],
+      "enabled": false
+    }, // deep-research: npm 404 - pip install local-deep-research
+    "graphify": {
+      "type": "local",
+      "command": ["npx", "-y", "graphify-mcp"],
+      "enabled": false
+    }, // graphify: npm 404 - alternatif docker
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    },
+    "firecrawl": {
+      "type": "remote",
+      "url": "https://mcp.firecrawl.dev/v2/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer fc-8eeee0e1e1a34624befedeb54b8a31bc"
+      }
+    },
+    "tavily": {
+      "type": "local",
+      "command": ["npx", "-y", "tavily-mcp"],
+      "enabled": true,
+      "environment": {
+        "TAVILY_API_KEY": "{env:TAVILY_API_KEY}"
+      }
+    },
+    "exa": {
+      "type": "local",
+      "command": ["npx", "-y", "exa-mcp-server"],
+      "enabled": true,
+      "environment": {
+        "EXA_API_KEY": "{env:EXA_API_KEY}"
+      }
+    },
+    "sequential-thinking": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "enabled": true
+    },
+    "brave-search": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-brave-search"],
+      "enabled": false,
+      "environment": {
+        "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
+      }
+    }, // brave-search: enable jika BRAVE_API_KEY set
+    "github": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
+      "enabled": true,
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    } // enable setelah set GITHUB_PERSONAL_ACCESS_TOKEN - lihat langkah di bawah
+  }
+}
