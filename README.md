@@ -1,83 +1,81 @@
 # Efka Engineering System
 
-Sistem engineering global yang bisa dipakai siapa saja, dipasang dengan **satu perintah**,
-dan menjaga dirinya sendiri lewat gerbang verifikasi. Isinya: tooling pemeriksa, penjaga
-rahasia, scaffolder proyek, template, dan handbook — bukan aplikasi.
+Lapisan kontrol untuk pekerjaan engineering di mesin mana pun: memeriksa kesiapan, menegakkan
+invarian, menyediakan kontrak kerja, dan mencatat bukti. **Berdiri sendiri** — semua sistem lain
+(gateway model, sandbox, eval, agen) adalah *modul* yang diverifikasi, bukan diinstal.
 
 ```
 Windows   : irm https://raw.githubusercontent.com/EfkaStudio-prd/Efka-Engineering-System/main/install.ps1 | iex
 Linux/WSL : curl -fsSL https://raw.githubusercontent.com/EfkaStudio-prd/Efka-Engineering-System/main/install.sh | bash
 ```
 
-Sesudah instalasi: `scripts/verify-all.ps1` memberi satu verdict atas lingkungan, rahasia,
-dan repo. Detail: **[docs/INSTALL.md](docs/INSTALL.md)**.
+Mulai dari **[docs/INSTALL.md](docs/INSTALL.md)**, lalu **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ---
 
-## Untuk siapa
-
-- Kamu memakai lebih dari satu agen (Qoder, OpenCode, Claude Code, Codex) dan ingin **satu**
-  sumber aturan, skill, dan gerbang kualitas.
-- Kamu ingin tahu apakah mesinmu benar-benar siap, bukan menebak.
-- Kamu ingin setiap pekerjaan punya bukti: exit code, log, hook, tag — bukan "sepertinya sudah".
-
-## Apa yang dipasang
+## 1. Apa yang ada di dalam
 
 | Komponen | Fungsi | Bukti kerja |
 |---|---|---|
-| `scripts/system-doctor.ps1` | kesiapan toolchain, surface agen, MCP, repo, file kredensial, disk | exit code + tabel per item |
-| `scripts/verify-all.ps1` | gerbang produksi: doctor + secrets + adapter host | `logs/verify-<ts>.json`, retensi 60 run |
-| `scripts/scan-secrets.ps1` | pemindai kredensial (nama file + isi) | menolak dengan exit 1 |
-| `scripts/New-EfkaProject.ps1` | proyek baru: AGENTS.md, `.gitignore`, `.gitattributes`, `check.ps1`, commit + tag | repo langsung patuh baseline |
-| `githooks/pre-commit` | penjaga rahasia untuk setiap commit | commit berisi kredensial ditolak |
-| `skills/` | `efka-system-doctor`, `wsl-podman-service` | dipasang ke semua surface agen yang terdeteksi |
-| `templates/AGENTS.project.md` | kerangka konteks proyek | dipakai scaffolder |
-| `docs/` | handbook: inventaris, katalog skill, MCP, memori, roadmap, fondasi, toolchain | dibaca manusia/agen |
-| `opencode/` | lane OpenCode (agen, skill, command, config) | dipasang dengan `-Profile full` |
+| `core/scripts/system-doctor.ps1` | kesiapan toolchain, surface agen, MCP, repo, file kredensial, disk | exit code + tabel per item |
+| `core/scripts/verify-all.ps1` | gate: doctor + secrets + setiap `adapters/*/verify.ps1` | `logs/verify-<ts>.json`, retensi 60 run |
+| `core/scripts/scan-secrets.ps1` | pemindai kredensial (nama file + isi) | exit 1 saat menemukan |
+| `core/scripts/validate-review.ps1` | menegakkan kontrak review | exit 1 + daftar pelanggaran |
+| `core/scripts/New-EfkaProject.ps1` | proyek baru: AGENTS.md, `.gitignore`, `.gitattributes`, `check.ps1`, commit + tag | repo langsung patuh baseline |
+| `core/githooks/pre-commit` | penjaga rahasia untuk setiap commit | commit berisi kredensial ditolak |
+| `core/templates/` | `TASK_CONTRACT`, `EVIDENCE_RECEIPT`, `HANDOFF`, `review-output.schema.json`, `AGENTS.project.md` | dipakai sebelum/selama/sesudah kerja |
+| `skills/efka-system-doctor` | skill agen untuk menjalankan & menafsirkan gate | dipasang ke surface agen yang terdeteksi |
+| `docs/` | INSTALL, ARCHITECTURE, MODULES, GATES, CONTRACTS, MEMORY, TOOLCHAIN, SCORE, GEMS | rujukan kerja |
 
-## Prinsip yang tidak dinegosiasikan
+## 2. Prinsip
 
-1. **Tidak ada kredensial di repo.** Konfigurasi membaca `EFKA_9ROUTER_KEY`, `FIRECRAWL_API_KEY`,
-   dst. dari environment; contoh ada di `secrets.example.env`.
-2. **Satu sumber kebenaran.** Repo ini sumbernya; mesin meng-*install* dari sini, bukan menyalin manual.
-3. **Gerbang, bukan opini.** "Selesai" berarti gate hijau dengan log, bukan kalimat "done".
-4. **Fail-closed.** Kapabilitas yang tidak didukung = `BLOCKED`, bukan fallback diam-diam.
-5. **Tidak ada instal diam-diam.** Menambah tool/MCP/plugin = keputusan eksplisit + dicatat.
+1. **Berdiri sendiri.** `core/` tidak tahu nama host, path pengguna, atau produk tertentu.
+   Yang khusus mesin hidup di `adapters/` dan tidak ikut tercopy ke mesin lain.
+2. **Tidak ada kredensial di repo.** Semua dari environment (`secrets.example.env`).
+3. **Gerbang, bukan opini.** "Selesai" = gate hijau + tes teramati, bukan kalimat "done".
+4. **Fail-closed.** Kapabilitas tak didukung = `BLOCKED`, bukan fallback diam-diam.
+5. **Satu sumber kebenaran.** Instalasi dihasilkan dari repo ini; tidak ada salinan manual.
+6. **Tanpa bukti bukan temuan.** Finding review wajib menyertakan kutipan/output.
 
-## Struktur
+## 3. Struktur
 
 ```
 install.ps1 / install.sh     bootstrapper 1-klik (Windows / Unix)
-manifest.json                daftar komponen + invarian + versi
-VERSION                      2.0.0
+manifest.json · VERSION      daftar komponen, invarian, versi
 core/
-  scripts/                   doctor, gate, secret-scan, scaffold (portable)
+  scripts/                   doctor · gate · secret-scan · validate-review · scaffold
   githooks/                  secret guard
-  templates/                 AGENTS.project.md
+  templates/                 kontrak kerja + schema review + AGENTS proyek
 skills/                      skill agen yang ikut dipasang
-docs/                        handbook + INSTALL/GEMS/SCORE + lane OpenCode
-opencode/                    konfigurasi lane OpenCode (eksperimental)
-adapters/                    lapisan khusus host (tidak ikut tercopy ke mesin lain)
+docs/                        INSTALL · ARCHITECTURE · MODULES · GATES · CONTRACTS · MEMORY · TOOLCHAIN · SCORE · GEMS
+adapters/                    lapisan khusus host/modul (tidak tercopy, tidak wajib)
 ```
 
-## Status dan batas
+## 4. Modul, bukan bagian sistem
 
-- Skor **manajemen sistem 85%**, skor **kematangan harness engineering 44%** — rincian,
-  bobot, dan jalannya ke 80% ada di [docs/SCORE.md](docs/SCORE.md).
-- Handbok host-spesifik (9Router/WSL, Podman, sinkronisasi dua folder) tetap ada di `docs/`
-  sebagai contoh nyata; jangan dianggap bagian wajib dari core.
-- Lane OpenCode berasal dari build Agustus 2026 (lihat [docs/ENGINEERING.md](docs/ENGINEERING.md));
-  statusnya **eksperimental** dan tidak dijalankan oleh gate.
+EES **tidak** memasang atau mengonfigurasi gateway model, sandbox, atau eval harness. Cara
+memverifikasinya ada di [docs/MODULES.md](docs/MODULES.md): satu folder `adapters/<nama>/verify.ps1`
+di mesinmu, otomatis dijalankan gate. Status modul muncul sebagai `adapter:<nama>`, terpisah dari
+status EES.
 
-## Berkontribusi / mengubah
+## 5. Perintah yang sering dipakai
 
-```bash
-git clone https://github.com/EfkaStudio-prd/Efka-Engineering-System
-cd Efka-Engineering-System
-pwsh -File install.ps1 -DryRun     # lihat rencana
+```powershell
+# gate lengkap
+powershell -ExecutionPolicy Bypass -File "$HOME\Efka Engineering System\scripts\verify-all.ps1"
+
+# proyek baru yang langsung patuh baseline
+powershell -ExecutionPolicy Bypass -File "$HOME\Efka Engineering System\scripts\New-EfkaProject.ps1" `
+  -Path 'C:\Projects\my-api' -Name 'My API' -Kind node
+
+# validasi keluaran review sebelum merge
+Get-Content .\review.json -Raw | powershell -File "$HOME\Efka Engineering System\scripts\validate-review.ps1"
 ```
 
-Setiap perubahan wajib: `scan-secrets` bersih, `verify-all` hijau, dan satu baris di
-`manifest.json` bila menambah komponen.
+## 6. Status dan batas
 
-Lisensi: belum ditetapkan. Tambahkan `LICENSE` sebelum dipakai pihak lain.
+- Skor **manajemen sistem 85/100**, **kematangan harness engineering ±52/100** (naik dari 44
+  setelah kontrak kerja + validator review ada; belum ditegakkan otomatis). Rincian:
+  [docs/SCORE.md](docs/SCORE.md).
+- Belum ada: eksekusi terisolasi, pengumpulan receipt otomatis, reviewer independen, eval matrix, CI.
+- Lisensi belum ditetapkan. Tambahkan `LICENSE` sebelum dipakai pihak lain.

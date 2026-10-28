@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EfkaStudio-prd/Efka-Engineering-System/core/templates/review-output.schema.json",
+  "title": "EES review output",
+  "description": "Kontrak keluaran review. Tanpa bukti bukan temuan; approve tanpa test_observed dianggap tidak sah.",
+  "type": "object",
+  "required": ["verdict", "findings", "tests_observed", "independent"],
+  "additionalProperties": false,
+  "properties": {
+    "verdict": { "enum": ["approve", "request_changes", "blocked"] },
+    "snapshot": {
+      "type": "object",
+      "description": "Apa yang direview. Wajib bila verdict != blocked.",
+      "properties": {
+        "base_commit": { "type": "string" },
+        "head_commit": { "type": "string" },
+        "files_changed": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "title", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "severity": { "enum": ["critical", "high", "medium", "low", "nit"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "title": { "type": "string", "minLength": 8 },
+          "evidence": {
+            "type": "string",
+            "minLength": 8,
+            "description": "Kutipan kode/output atau langkah reproduksi. Opini tanpa bukti ditolak."
+          },
+          "suggestion": { "type": "string" }
+        }
+      }
+    },
+    "tests_observed": {
+      "type": "array",
+      "description": "Perintah dan hasil yang benar-benar terlihat. 'not_run' hanya sah untuk verdict blocked/request_changes.",
+      "items": {
+        "type": "object",
+        "required": ["command", "result"],
+        "additionalProperties": false,
+        "properties": {
+          "command": { "type": "string", "minLength": 3 },
+          "exit_code": { "type": "integer" },
+          "result": { "enum": ["pass", "fail", "not_run"] },
+          "excerpt": { "type": "string" }
+        }
+      }
+    },
+    "residual_risk": { "type": "string" },
+    "model_used": { "type": "string" },
+    "independent": {
+      "type": "boolean",
+      "description": "false bila reviewer memakai model/upstream yang sama dengan implementer."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "approve" } }, "required": ["verdict"] },
+      "then": {
+        "properties": {
+          "tests_observed": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["command", "result", "exit_code"],
+              "properties": { "result": { "const": "pass" } }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

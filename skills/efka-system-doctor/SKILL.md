@@ -1,60 +1,49 @@
 ---
 name: efka-system-doctor
-description: Run the local production-readiness doctor on this laptop and turn its output into concrete fixes. Use when the user asks to check system readiness, audit tooling, verify that the dev environment or the 9Router gateway is healthy, asks what is broken, or after installing/updating IDE plugins, Node, WSL, or 9Router. Also use before starting a large engineering task when environment state is uncertain. Does not install anything.
+description: Run the Efka Engineering System readiness doctor and production gate on this machine, then turn the output into concrete fixes. Use when asked to check system readiness, audit tooling, verify the engineering environment, asks what is broken, or after installing/updating an IDE agent, Node, PowerShell, or a local service. Also use before starting a large task when environment state is uncertain. Read-only; installs nothing.
 ---
 
 # Efka System Doctor
 
-Single source of truth for this machine's engineering environment is
-`<hub>\`. This skill runs its readiness gate and interprets the result.
-
-## When to use
-
-- "cek kesiapan sistem", "lingkungan dev masih oke?", "what's broken on this machine"
-- after an IDE plugin/Node/WSL/9Router change, before a long build session
-- when a scheduled doctor run reports FAIL
-
-When NOT to use: for a bug inside a specific application (debug that app instead), or for
-generic programming questions.
+EES is the control layer: it checks, enforces invariants, and records evidence. It never installs
+modules (gateway, sandbox, agents) for you.
 
 ## Procedure
 
-1. Run the doctor (read-only, safe to repeat):
+1. Run the doctor (fast, per-item):
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File "<hub>\scripts\system-doctor.ps1"
    ```
 
-   Exit code: `0` = no FAIL, `1` = at least one FAIL. Add `-Json` when you need to parse the
-   rows, `-SkipWsl` when the WSL section is irrelevant or the VM must stay asleep.
+2. Run the gate (doctor + secrets + every `adapters/*/verify.ps1`):
 
-2. Read the rows in this order: `FAIL` first, then `WARN`. Each row already carries the fix
-   hint in `Detail`. Areas used: `toolchain`, `plugin`, `skill`, `mcp`, `wsl`, `9router`,
-   `project`, `capacity`.
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File "<hub>\scripts\verify-all.ps1"
+   ```
 
-3. Map each finding to the matching section of `<hub>\docs\05-roadmap.md`
-   (items are numbered and some are explicitly "needs approval"). Do not invent new global
-   changes from a doctor row.
+   `<hub>` = the folder that contains `manifest.json` (default `%USERPROFILE%\Efka Engineering System`).
+   Exit `0` = no FAIL, `1` = at least one FAIL. Use `-NoLog` for ad-hoc runs.
 
-4. Report to the user as: counts (FAIL/WARN/OK/INFO), the top blocking rows verbatim, the
-   fix command for each, and whether that fix needs their approval.
+3. Read results in this order: `FAIL` → `WARN`. Each row already carries the hint.
+   Areas: `toolchain`, `agent`, `mcp`, `repo`, `secrets`, `capacity`, `adapter:<name>`.
 
-## Known fixes referenced by the doctor
+4. Report to the user: counts (FAIL/WARN/OK/INFO), the failing rows verbatim, the fix command,
+   and whether the fix needs their approval.
 
-| Finding | Fix (already exists on this host) |
-|---|---|
-| `wsl` FAIL on `vmIdleTimeout` / `instanceIdleTimeout` | `powershell -ExecutionPolicy Bypass -File <9Router-Backup>\restore-wslconfig-idle.ps1` (merges, never overwrites) |
-| `wsl` FAIL on autostart task | `… <9Router-Backup>\files\install-9router-autostart.ps1` |
-| `9router` FAIL "pins a different digest" | `… <9Router-Backup>\sync-default-project.ps1`, then `compare-locations.ps1` |
-| `9router` WARN gateway HTTP empty | gateway is only up when WSL runs: `wsl -d Ubuntu-24.04 -- systemctl --user start 9router-podman.service` |
-| `project` WARN "git=False" | needs user approval: `git init` + a `.gitignore` that excludes archives and credentials |
-| `mcp` WARN pinned winget node path | needs user approval: set `"command": "node"` in `~\.qoder\mcp.json`, then re-verify the server |
+## Interpretation rules
+
+- `INFO: not installed (optional)` is not a problem.
+- `WARN: child process could not start` means a restricted environment (IDE sandbox) blocked a
+  child process — re-run from a normal terminal; do not "fix" it in the scripts.
+- A `repo` WARN about `hooksPath=unset` means the secret guard is not wired there:
+  `git -C <repo> config core.hooksPath "<hub>/githooks"`.
+- A module's health (gateway, sandbox, eval) only appears as `adapter:<name>`; if that section is
+  missing, the module is simply not installed — that is not an EES failure.
 
 ## Guardrails
 
-- The doctor must stay read-only. Never add a mutating command to it.
-- Never print the contents of `~\.qoder\mcp-router.json`, `~\.mcp-auth\`, or any 9Router
-  credential/volume data. Paths and ages only.
-- Anything requiring network install (plugins, `npx skills add`, MCP servers, winget
-  upgrades) is a proposal to the user, not an action.
-- If the doctor itself errors, say so plainly; do not report an environment as healthy.
+- Never add a mutating step to the doctor or gate.
+- Never print contents of credential files; paths and ages only.
+- Anything requiring network install (tool, plugin, MCP) is a proposal, not an action.
+- If the gate itself errors, say so; never report an environment as healthy.

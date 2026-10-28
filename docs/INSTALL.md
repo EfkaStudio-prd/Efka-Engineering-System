@@ -28,7 +28,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 | Opsi | Default | Arti |
 |---|---|---|
 | `-Target` | `%USERPROFILE%\Efka Engineering System` (`$HOME/Efka Engineering System`) | lokasi instalasi; `EFKA_TARGET` untuk versi bash |
-| `-Profile` | `core` | `full` juga menyalin lane OpenCode ke `~/.config/opencode` |
+| `-Profile` | `core` | hanya `core` yang diuji saat ini; profil lain disediakan untuk bundle tambahan di masa depan |
 | `-WithTasks` | mati | mendaftarkan Scheduled Task harian `Efka System Doctor` |
 | `-DryRun` | mati | cetak rencana, tidak menulis apa pun |
 
@@ -41,7 +41,7 @@ Installer **idempotent**: menjalankan ulang akan memperbarui `scripts/`, `templa
 2. Menyalin `skills/` ke setiap surface agen yang **terdeteksi**: `~/.qoder/skills`,
    `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills`.
 3. `git init` (bila belum) + `core.hooksPath` → `githooks/` (penjaga rahasia aktif).
-4. Opsional: konfigurasi OpenCode, Scheduled Task harian.
+4. Opsional: Scheduled Task harian (`-WithTasks`).
 5. Menjalankan `system-doctor.ps1` dan mencetak langkah berikutnya.
 
 **Tidak** dilakukan installer: memasang tool (node/python/uv/pwsh/jq), menulis nilai
@@ -59,6 +59,22 @@ powershell -ExecutionPolicy Bypass -File "$HOME\Efka Engineering System\scripts\
 ```
 
 Hasil gate tersimpan di `logs/verify-<timestamp>.json` (retensi 60 run). Exit `1` = ada FAIL.
+
+### 4b. Kontrak kerja (opsional, tetapi disarankan)
+
+Template siap pakai di `core/templates/`:
+
+| Kebutuhan | File | Penegak |
+|---|---|---|
+| Sebelum mulai kerja | `TASK_CONTRACT.md` | review manusia |
+| Bukti per aksi | `EVIDENCE_RECEIPT.md` | review |
+| Sebelum merge | `review-output.schema.json` | `scripts/validate-review.ps1` |
+| Pindah sesi/agen | `HANDOFF.md` | manusia |
+
+```powershell
+# validasi keluaran review (exit 1 = kontrak dilanggar)
+Get-Content .\review.json -Raw | powershell -File "$HOME\Efka Engineering System\scripts\validate-review.ps1"
+```
 
 ## 5. Kredensial
 
@@ -90,7 +106,7 @@ apa yang terpasang.
 ```powershell
 Remove-Item -Recurse -Force "$HOME\Efka Engineering System"
 # skill (opsional)
-Remove-Item -Recurse -Force "$HOME\.qoder\skills\efka-system-doctor", "$HOME\.qoder\skills\wsl-podman-service"
+Remove-Item -Recurse -Force "$HOME\.qoder\skills\efka-system-doctor"
 # task (opsional)
 Unregister-ScheduledTask -TaskName 'Efka System Doctor' -Confirm:$false
 ```
