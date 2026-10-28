@@ -7,6 +7,7 @@
     secrets  - high-confidence credential scan over the hub and the repos you pass
     sandbox  - execution boundary preflight (rootless podman + pinned image)
     adapters - optional per-host checks found in adapters\<name>\verify.ps1
+    integrations - optional add-ons found in integrations\<name>\verify.ps1
   Writes logs\verify-<timestamp>.json and .txt next to the hub (git-ignored).
   Exit code 0 = every section OK/WARN/INFO, 1 = at least one FAIL.
 .PARAMETER RequireSandbox
@@ -131,6 +132,20 @@ if (Test-Path -LiteralPath $adapterRoot) {
     }
 }
 else { Add-Section 'adapters' 'INFO' 'no adapters/ directory' @() }
+
+# optional add-ons: integrations\<name>\verify.ps1 (third-party agent content, opt-in)
+$integrationRoot = Join-Path $HubRoot 'integrations'
+if (Test-Path -LiteralPath $integrationRoot) {
+    $integrationScripts = @(Get-ChildItem -LiteralPath $integrationRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            $v = Join-Path $_.FullName 'verify.ps1'
+            if (Test-Path -LiteralPath $v) { $v }
+        })
+    if ($integrationScripts.Count -eq 0) { Add-Section 'integrations' 'INFO' 'no add-on verify.ps1 present' @() }
+    foreach ($i in $integrationScripts) {
+        Invoke-Child -Name ('integration:' + (Split-Path (Split-Path $i -Parent) -Leaf)) -ScriptPath $i -ScriptArgs @()
+    }
+}
+else { Add-Section 'integrations' 'INFO' 'no integrations/ directory' @() }
 
 Write-Output ''
 $sections | Format-Table -AutoSize Section, Status, Detail | Out-String -Width 220 | Write-Output

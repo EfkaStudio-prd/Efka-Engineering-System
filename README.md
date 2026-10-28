@@ -28,8 +28,9 @@ Mulai dari **[docs/INSTALL.md](docs/INSTALL.md)**, lalu **[docs/ARCHITECTURE.md]
 | `core/githooks/pre-commit` | penjaga rahasia untuk setiap commit | commit berisi kredensial ditolak |
 | `core/templates/` | `TASK_CONTRACT`, `EVIDENCE_RECEIPT`, `HANDOFF`, `review-output.schema.json`, `AGENTS.project.md` | dipakai sebelum/selama/sesudah kerja |
 | `core/tests/` | self-test batas eksekusi (10 kasus) + admission kontrak (5 kasus) | 15/15 hijau atau gate FAIL |
+| `integrations/understand-anything/` | **add-on opt-in**: 9 skill peta kode (upstream MIT, dipin, tidak di-vendor) | `integration:understand-anything` di gate |
 | `skills/efka-system-doctor` | skill agen untuk menjalankan & menafsirkan gate | dipasang ke surface agen yang terdeteksi |
-| `docs/` | INSTALL, ARCHITECTURE, MODULES, GATES, SANDBOX, CONTRACTS, MEMORY, TOOLCHAIN, SCORE, GEMS | rujukan kerja |
+| `docs/` | INSTALL, ARCHITECTURE, MODULES, GATES, SANDBOX, CONTRACTS, ADDONS, MEMORY, TOOLCHAIN, SCORE, GEMS | rujukan kerja |
 
 ## 2. Prinsip
 
@@ -53,8 +54,9 @@ core/
   templates/                 kontrak kerja + schema review + AGENTS proyek
   tests/                     self-test batas eksekusi
 skills/                      skill agen yang ikut dipasang
-docs/                        INSTALL · ARCHITECTURE · MODULES · GATES · SANDBOX · CONTRACTS · MEMORY · TOOLCHAIN · SCORE · GEMS
+docs/                        INSTALL · ARCHITECTURE · MODULES · GATES · SANDBOX · CONTRACTS · ADDONS · MEMORY · TOOLCHAIN · SCORE · GEMS
 adapters/                    lapisan khusus host/modul (tidak tercopy, tidak wajib)
+integrations/                add-on pihak ketiga: wrapper opt-in + verifikasi (isi upstream tidak di-vendor)
 ```
 
 ## 4. Modul, bukan bagian sistem
@@ -66,6 +68,20 @@ otomatis dijalankan gate. Status modul muncul sebagai `adapter:<nama>`, terpisah
 Satu-satunya runtime yang **dipakai** (bukan dikelola) adalah rootless Podman di WSL untuk batas
 eksekusi: EES tidak memasang Podman, tidak menarik image, dan tidak mengubah konfigurasinya. Bila
 Podman atau image tidak ada, eksekusi berhenti dengan `BLOCKED`.
+
+## 4b. Add-on: Understand-Anything
+
+Kategori ketiga setelah core dan modul: **add-on** = konten agen pihak ketiga yang dipasang hanya
+kalau kamu minta. Yang disimpan di repo ini cuma wrapper-nya; isi upstream tidak di-vendor.
+
+```powershell
+# peta kode interaktif: 9 skill (understand, understand-chat, understand-diff, ...)
+powershell -File "$HOME\Efka Engineering System\integrations\understand-anything\install.ps1" -DryRun
+powershell -File "$HOME\Efka Engineering System\integrations\understand-anything\install.ps1" -Yes
+```
+
+Tanpa `-Yes` installer keluar `2` (BLOCKED). Pin commit upstream dicek oleh `verify.ps1`; drift =
+FAIL. Aturan lengkap: [docs/ADDONS.md](docs/ADDONS.md).
 
 ## 5. Perintah yang sering dipakai
 

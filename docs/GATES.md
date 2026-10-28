@@ -10,8 +10,8 @@ Semua pemeriksaan EES bersifat **read-only**. Tidak ada gate yang memperbaiki se
 | `scripts/verify-all.ps1` | "apakah sistem secara keseluruhan masih sah?" | 0 = tanpa FAIL, 1 = ada FAIL |
 
 `verify-all` menjalankan `doctor` + `scan-secrets` + preflight `sandbox` + setiap
-`adapters/*/verify.ps1`, mencetak tabel seksi, lalu menulis `logs/verify-<timestamp>.json` dan
-`.txt` (retensi 60 run).
+`adapters/*/verify.ps1` + setiap `integrations/*/verify.ps1`, mencetak tabel seksi, lalu menulis
+`logs/verify-<timestamp>.json` dan `.txt` (retensi 60 run).
 
 ## 2. Status yang dipakai
 
@@ -51,8 +51,9 @@ Aturan: **FAIL tidak boleh diabaikan**, WARN tidak boleh menumpuk tanpa catatan.
 
 1. Taruh di `core/scripts/` bila generik untuk semua mesin.
 2. Taruh di `adapters/<host>/verify.ps1` bila khusus host/modul.
-3. Keluarkan baris ringkas per item + exit code; jangan hanya `Write-Host`.
-4. Daftarkan di `manifest.json` dan sebutkan di README bila ia komponen baru.
+3. Taruh di `integrations/<addon>/verify.ps1` bila itu add-on pihak ketiga (lihat `docs/ADDONS.md`).
+4. Keluarkan baris ringkas per item + exit code; jangan hanya `Write-Host`.
+5. Daftarkan di `manifest.json` dan sebutkan di README bila ia komponen baru.
 
 ## 6. Membaca hasil dari otomasi
 

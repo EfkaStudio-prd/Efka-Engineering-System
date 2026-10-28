@@ -1,6 +1,6 @@
 {
   "name": "Efka Engineering System",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "updated": "2026-10-28",
   "repo": "https://github.com/EfkaStudio-prd/Efka-Engineering-System",
   "scope": "Standalone control layer: readiness, gates, a fail-closed execution boundary, contracts, and evidence. Other systems (model gateway, eval, agent runtimes) are external modules that are verified, never installed.",
@@ -25,7 +25,7 @@
     { "id": "template-review", "path": "core/templates/review-output.schema.json", "purpose": "machine-readable review contract", "status": "stable" },
     { "id": "template-agents", "path": "core/templates/AGENTS.project.md", "purpose": "project context skeleton", "status": "stable" },
     { "id": "skill-doctor", "path": "skills/efka-system-doctor/SKILL.md", "purpose": "agent skill: run and interpret the gate", "status": "stable" },
-    { "id": "docs", "path": "docs", "purpose": "INSTALL, ARCHITECTURE, MODULES, GATES, SANDBOX, CONTRACTS, MEMORY, TOOLCHAIN, SCORE, GEMS", "status": "stable" }
+    { "id": "docs", "path": "docs", "purpose": "INSTALL, ARCHITECTURE, MODULES, GATES, SANDBOX, CONTRACTS, ADDONS, MEMORY, TOOLCHAIN, SCORE, GEMS", "status": "stable" }
   ],
   "invariants": [
     "core/ contains no host names, user paths, or product-specific logic",
@@ -36,11 +36,28 @@
     "a review finding without evidence is rejected by the validator",
     "a test claimed as pass must match the receipt the executor wrote",
     "images are pulled by a human, never by the system",
-    "work does not start without an admitted task contract"
+    "work does not start without an admitted task contract",
+    "third-party agent content is opt-in, pinned, attributed, and never vendored"
   ],
   "adapters": {
     "description": "Host/module-specific layers live outside core/ and are never copied to other machines.",
     "contract": "adapters/<name>/verify.ps1 is executed automatically by the gate as section adapter:<name>"
+  },
+  "addons": {
+    "description": "Opt-in third-party agent content (skills/plugins). EES ships only the pinned, consent-gated wrapper; nothing is vendored, nothing is installed automatically. Gate section: integration:<name>.",
+    "contract": "integrations/<name>/install.ps1 (-DryRun | -Yes | -Uninstall) + verify.ps1 (read-only)",
+    "installed": [
+      {
+        "name": "understand-anything",
+        "upstream": "https://github.com/Egonex-AI/Understand-Anything",
+        "license": "MIT",
+        "pin": "f08763d11d0202a8a8f52b5dedda6d1b2e2ebac8",
+        "pin_ref": "v2.9.0",
+        "pin_date": "2026-07-10",
+        "delivers": "9 skills: understand, understand-chat, understand-dashboard, understand-diff, understand-domain, understand-explain, understand-figma, understand-knowledge, understand-onboard",
+        "surface_default": "%USERPROFILE%/.qoder/skills"
+      }
+    ]
   },
   "runtime_dependency": {
     "name": "rootless podman in WSL",

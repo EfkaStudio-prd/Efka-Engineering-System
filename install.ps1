@@ -54,7 +54,7 @@ function Ensure-Dir([string]$Path) {
 
 # ---------- 1. core ----------
 Ensure-Dir $Target
-foreach ($sub in 'scripts', 'templates', 'tests', 'githooks', 'docs', 'adapters', 'logs') {
+foreach ($sub in 'scripts', 'templates', 'tests', 'githooks', 'docs', 'adapters', 'integrations', 'logs') {
     Ensure-Dir (Join-Path $Target $sub)
 }
 foreach ($pair in @(
@@ -62,6 +62,7 @@ foreach ($pair in @(
         @{ From = 'core\templates'; To = 'templates' },
         @{ From = 'core\tests'; To = 'tests' },
         @{ From = 'core\githooks'; To = 'githooks' },
+        @{ From = 'integrations'; To = 'integrations' },
         @{ From = 'docs'; To = 'docs' }
     )) {
     $from = Join-Path $source $pair.From
@@ -147,3 +148,4 @@ Write-Host ("  1. gate        : powershell -ExecutionPolicy Bypass -File `"" + (
 Write-Host ("  2. new project : powershell -ExecutionPolicy Bypass -File `"" + (Join-Path $Target 'scripts\New-EfkaProject.ps1') + "`" -Path <dir> -Name <name>")
 Write-Host ("  3. read first  : " + (Join-Path $Target 'docs\INSTALL.md'))
 Write-Host '  4. execution   : pull a pinned image once (podman pull alpine:3.20), then scripts\sandbox-run.ps1 -Command <cmd> -WorkDir <dir>'
+Write-Host '  5. add-on      : integrations\understand-anything\install.ps1 -DryRun   (opt-in codebase knowledge graph)'

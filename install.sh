@@ -31,7 +31,7 @@ resolve_source() {
 
 SRC="$(resolve_source)"
 say "install target: $TARGET"
-mkdir -p "$TARGET"/{scripts,templates,tests,githooks,docs,adapters,logs}
+mkdir -p "$TARGET"/{scripts,templates,tests,githooks,docs,adapters,integrations,logs}
 
 copy_tree() { # $1 = source subdir, $2 = target subdir
   [ -d "$SRC/$1" ] || return 0
@@ -43,6 +43,7 @@ copy_tree core/scripts scripts
 copy_tree core/templates templates
 copy_tree core/tests tests
 copy_tree core/githooks githooks
+copy_tree integrations integrations
 copy_tree docs docs
 for meta in manifest.json README.md VERSION; do
   [ -f "$SRC/$meta" ] && cp "$SRC/$meta" "$TARGET/$meta"
