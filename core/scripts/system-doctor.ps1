@@ -63,7 +63,7 @@ foreach ($name in $tools.Keys) {
     $found = Resolve-Tool $tools[$name]
     if ($found) { Add-Result 'toolchain' $name 'OK' $found }
     elseif ($required -contains $name) { Add-Result 'toolchain' $name 'FAIL' 'required but not found' }
-    else { Add-Result 'toolchain' $name 'INFO' 'not installed (optional)' }
+    else { Add-Result 'toolchain' $name 'INFO' 'not installed on the Windows PATH (the executor probes WSL podman separately: gate section sandbox)' }
 }
 
 # ---------- agent surfaces ----------

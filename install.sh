@@ -31,7 +31,7 @@ resolve_source() {
 
 SRC="$(resolve_source)"
 say "install target: $TARGET"
-mkdir -p "$TARGET"/{scripts,templates,githooks,docs,adapters,logs}
+mkdir -p "$TARGET"/{scripts,templates,tests,githooks,docs,adapters,logs}
 
 copy_tree() { # $1 = source subdir, $2 = target subdir
   [ -d "$SRC/$1" ] || return 0
@@ -41,6 +41,7 @@ copy_tree() { # $1 = source subdir, $2 = target subdir
 
 copy_tree core/scripts scripts
 copy_tree core/templates templates
+copy_tree core/tests tests
 copy_tree core/githooks githooks
 copy_tree docs docs
 for meta in manifest.json README.md VERSION; do
@@ -65,10 +66,8 @@ git -C "$TARGET" config core.hooksPath "$TARGET/githooks" || true
 chmod +x "$TARGET/githooks/pre-commit" 2>/dev/null || true
 ok "secret guard wired (core.hooksPath)"
 
-if [ "$PROFILE" = "full" ] && [ -d "$SRC/opencode" ]; then
-  mkdir -p "$HOME/.config/opencode"
-  cp -R "$SRC/opencode/." "$HOME/.config/opencode/"
-  ok "opencode lane copied (export EFKA_9ROUTER_KEY / FIRECRAWL_API_KEY)"
+if [ "$PROFILE" = "full" ]; then
+  warn "profile 'full' has no extra lane any more: modules are verified through adapters/<name>/verify.ps1"
 fi
 
 if command -v pwsh >/dev/null 2>&1; then
@@ -82,7 +81,8 @@ fi
 cat <<EOF
 
 Installed. Next steps:
-  1. gate        : pwsh -File "$TARGET/scripts/verify-all.ps1"
+  1. gate        : pwsh -File "$TARGET/scripts/verify-all.ps1" -DeepSandbox
   2. new project : pwsh -File "$TARGET/scripts/New-EfkaProject.ps1" -Path <dir> -Name <name>
   3. read first  : $TARGET/docs/INSTALL.md
+  4. execution   : pull a pinned image once, then pwsh -File "$TARGET/scripts/sandbox-run.ps1" -Command <cmd> -WorkDir <dir>
 EOF

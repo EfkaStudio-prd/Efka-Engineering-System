@@ -54,12 +54,13 @@ function Ensure-Dir([string]$Path) {
 
 # ---------- 1. core ----------
 Ensure-Dir $Target
-foreach ($sub in 'scripts', 'templates', 'githooks', 'docs', 'adapters', 'logs') {
+foreach ($sub in 'scripts', 'templates', 'tests', 'githooks', 'docs', 'adapters', 'logs') {
     Ensure-Dir (Join-Path $Target $sub)
 }
 foreach ($pair in @(
         @{ From = 'core\scripts'; To = 'scripts' },
         @{ From = 'core\templates'; To = 'templates' },
+        @{ From = 'core\tests'; To = 'tests' },
         @{ From = 'core\githooks'; To = 'githooks' },
         @{ From = 'docs'; To = 'docs' }
     )) {
@@ -115,22 +116,9 @@ if (-not $DryRun) {
     Write-Ok ("core.hooksPath -> " + $hooksDir)
 }
 
-# ---------- 4. optional: OpenCode lane ----------
-if ($Profile -eq 'full') {
-    $ocSource = Join-Path $source 'opencode'
-    $ocTarget = Join-Path $env:USERPROFILE '.config\opencode'
-    if (Test-Path -LiteralPath $ocSource) {
-        Ensure-Dir $ocTarget
-        foreach ($f in @(Get-ChildItem -LiteralPath $ocSource -File -Recurse)) {
-            $rel = $f.FullName.Substring($ocSource.Length).TrimStart('\')
-            $dest = Join-Path $ocTarget $rel
-            if ($DryRun) { continue }
-            New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
-            Copy-Item -LiteralPath $f.FullName -Destination $dest -Force
-        }
-        Write-Ok 'opencode config copied (set EFKA_9ROUTER_KEY / FIRECRAWL_API_KEY in your environment)'
-    }
-}
+# ---------- 4. optional: verified module lanes ----------
+# Module-specific installers are deliberately not part of EES: modules are verified through
+# adapters/<name>/verify.ps1 on the machine that owns them (see docs/MODULES.md).
 
 # ---------- 5. optional: scheduled gate ----------
 if ($WithTasks -and -not $DryRun) {
@@ -155,7 +143,7 @@ else {
 
 Write-Host ''
 Write-Host 'Installed. Next steps:' -ForegroundColor Cyan
-Write-Host ("  1. gate        : powershell -ExecutionPolicy Bypass -File `"" + (Join-Path $Target 'scripts\verify-all.ps1') + "`"")
+Write-Host ("  1. gate        : powershell -ExecutionPolicy Bypass -File `"" + (Join-Path $Target 'scripts\verify-all.ps1') + "`" -DeepSandbox")
 Write-Host ("  2. new project : powershell -ExecutionPolicy Bypass -File `"" + (Join-Path $Target 'scripts\New-EfkaProject.ps1') + "`" -Path <dir> -Name <name>")
 Write-Host ("  3. read first  : " + (Join-Path $Target 'docs\INSTALL.md'))
-if ($Profile -ne 'full') { Write-Host '  4. optional    : re-run with -Profile full to also install the OpenCode lane' }
+Write-Host '  4. execution   : pull a pinned image once (podman pull alpine:3.20), then scripts\sandbox-run.ps1 -Command <cmd> -WorkDir <dir>'

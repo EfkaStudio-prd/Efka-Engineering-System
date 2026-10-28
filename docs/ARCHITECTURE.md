@@ -7,7 +7,7 @@ dan bukan installer untuk layanan lain.
 ```
                  ┌──────────────────────────────────────────┐
    agen/CLI ────►│ core/  (scripts, githooks, templates)    │
-                 │  doctor · gate · secret-scan · scaffold  │
+                 │  doctor · gate · sandbox-run · scaffold  │
                  └───────────────┬──────────────────────────┘
                                  │ memeriksa & memanggil
                  ┌───────────────▼──────────────────────────┐
@@ -31,9 +31,11 @@ automation. EES tidak memasang, tidak mengonfigurasi, dan tidak meng-hardcode mo
 ## 2. Aliran kerja yang ditegakkan
 
 1. **Kontrak** (`TASK_CONTRACT.md`) — goal, scope, acceptance, budget, stop condition.
-2. **Eksekusi** — agen bekerja di dalam scope; setiap aksi bermutasi menghasilkan receipt.
+2. **Eksekusi** — perintah dijalankan lewat `scripts/sandbox-run.ps1` (image dipin, tanpa jaringan,
+   rootfs read-only, satu mount, limit CPU/memori/PID, timeout); setiap eksekusi menulis receipt.
 3. **Verifikasi** — `scripts/verify-all.ps1` + `check.ps1` proyek; hasil berupa exit code dan log.
-4. **Review** — keluaran JSON sesuai `review-output.schema.json`, diperiksa `validate-review.ps1`.
+4. **Review** — keluaran JSON sesuai `review-output.schema.json`, diperiksa `validate-review.ps1`,
+   termasuk kecocokan klaim tes dengan receipt.
 5. **Handoff** — bila pekerjaan berpindah sesi/agen (`HANDOFF.md`).
 
 Tanpa langkah 1 dan 3, "selesai" hanya klaim.
@@ -50,7 +52,8 @@ Tanpa langkah 1 dan 3, "selesai" hanya klaim.
 
 - Runtime agen (Qoder/OpenCode/Codex/Claude) — itu host, bukan EES.
 - Gateway model dan routing provider.
-- Sandbox/container manager: EES hanya **memverifikasi** batasnya lewat adapter.
+- Memasang atau mengonfigurasi container runtime: executor hanya **memakai** rootless Podman yang
+  sudah ada, dan berhenti dengan `BLOCKED` bila tidak ada. Tidak ada image yang ditarik otomatis.
 - Dashboard, database, atau layanan jaringan.
 
 Menambahkan salah satu di atas ke dalam `core/` adalah regresi arsitektur.

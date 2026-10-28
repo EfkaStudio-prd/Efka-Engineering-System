@@ -16,30 +16,47 @@ modules (gateway, sandbox, agents) for you.
    powershell -ExecutionPolicy Bypass -File "<hub>\scripts\system-doctor.ps1"
    ```
 
-2. Run the gate (doctor + secrets + every `adapters/*/verify.ps1`):
+2. Run the gate (doctor + secrets + sandbox preflight + every `adapters/*/verify.ps1`):
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File "<hub>\scripts\verify-all.ps1"
+   # add -DeepSandbox to run the 10-case execution-boundary self-test (~20 s)
    ```
 
    `<hub>` = the folder that contains `manifest.json` (default `%USERPROFILE%\Efka Engineering System`).
    Exit `0` = no FAIL, `1` = at least one FAIL. Use `-NoLog` for ad-hoc runs.
 
 3. Read results in this order: `FAIL` → `WARN`. Each row already carries the hint.
-   Areas: `toolchain`, `agent`, `mcp`, `repo`, `secrets`, `capacity`, `adapter:<name>`.
+   Areas: `toolchain`, `agent`, `mcp`, `repo`, `secrets`, `capacity`, `sandbox`, `sandbox:selftest`,
+   `adapter:<name>`.
 
 4. Report to the user: counts (FAIL/WARN/OK/INFO), the failing rows verbatim, the fix command,
    and whether the fix needs their approval.
 
 ## Interpretation rules
 
-- `INFO: not installed (optional)` is not a problem.
+- `INFO: not installed (optional)` is not a problem. `podman` on the Windows PATH is optional; the
+  executor probes WSL podman itself and reports it as the `sandbox` section.
+- `WARN: execution boundary unavailable: image not usable` means the pinned image is missing or its
+  digest does not match: `podman pull` the pinned image, then compare with `podman inspect`.
 - `WARN: child process could not start` means a restricted environment (IDE sandbox) blocked a
   child process — re-run from a normal terminal; do not "fix" it in the scripts.
 - A `repo` WARN about `hooksPath=unset` means the secret guard is not wired there:
   `git -C <repo> config core.hooksPath "<hub>/githooks"`.
-- A module's health (gateway, sandbox, eval) only appears as `adapter:<name>`; if that section is
-  missing, the module is simply not installed — that is not an EES failure.
+- A module's health (gateway, eval, agent surface) only appears as `adapter:<name>`; if that section
+  is missing, the module is simply not installed — that is not an EES failure. The execution boundary
+  is the exception: it is core, so it reports as `sandbox`.
+
+## Running work inside the boundary
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "<hub>\scripts\sandbox-run.ps1" `
+  -Command 'npm ci && npm test' -WorkDir '<repo>' -WorkWrite -TimeoutSec 600 -MemoryMB 2048
+```
+
+Exit `2` = BLOCKED (no podman / image / digest mismatch): report it, never retry on the host shell.
+Every run writes `logs\sandbox\sandbox-<ts>.json`; quote that path as the receipt when claiming a
+test passed.
 
 ## Guardrails
 

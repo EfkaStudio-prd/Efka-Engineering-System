@@ -46,9 +46,14 @@ menganggap "proses hidup" sebagai bukti "layanan sehat" — probe hasil nyata.
 | Modul | Verifikasi yang wajar | Catatan |
 |---|---|---|
 | Gateway model lokal (mis. 9Router) | HTTP endpoint, digest image, data dir, bind loopback | **jangan** diinstal oleh EES |
-| Sandbox/container manager | versi, rootless, cgroup, image terpin | dipakai untuk pekerjaan berisiko |
+| Container runtime (rootless Podman) | versi, rootless, cgroup v2, image terpin | dipakai oleh executor; EES tidak memasang/mengonfigurasi |
 | Eval harness | dataset terpin, runner, output JSON | dipakai berkala, bukan setiap commit |
 | Browser automation | versi engine, profil terisolasi | kredensial tidak masuk repo |
+
+Catatan penting soal Podman: ia **bukan** modul yang diverifikasi lewat adapter, tetapi runtime yang
+dipakai `scripts/sandbox-run.ps1`. Bedanya, preflight executor sudah menjadi verifikasinya: distro
+WSL ada, Podman rootless jalan, dan image dengan digest terpin tersedia. Bila salah satu tidak ada,
+eksekusi `BLOCKED` - bukan fallback.
 
 ## 4. Anti-pola
 
@@ -56,3 +61,4 @@ menganggap "proses hidup" sebagai bukti "layanan sehat" — probe hasil nyata.
 - Menaruh path host di `manifest.json` → instalasi mesin lain rusak.
 - Menjalankan modul dari dalam gate tanpa timeout/limit → gate menggantung.
 - Menyebut status modul sebagai bagian dari status EES → laporan jadi ambigu.
+- Menarik image atau memasang runtime dari dalam gate → gate berubah jadi installer.

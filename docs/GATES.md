@@ -1,4 +1,4 @@
-# GATES — arti exit code dan apa yang diperiksa
+# GATES - arti exit code dan apa yang diperiksa
 
 Semua pemeriksaan EES bersifat **read-only**. Tidak ada gate yang memperbaiki sesuatu diam-diam.
 
@@ -9,14 +9,15 @@ Semua pemeriksaan EES bersifat **read-only**. Tidak ada gate yang memperbaiki se
 | `scripts/system-doctor.ps1` | "apakah mesin ini siap?" | 0 = tidak ada FAIL, 1 = ada FAIL |
 | `scripts/verify-all.ps1` | "apakah sistem secara keseluruhan masih sah?" | 0 = tanpa FAIL, 1 = ada FAIL |
 
-`verify-all` menjalankan `doctor` + `scan-secrets` + setiap `adapters/*/verify.ps1`, mencetak tabel
-seksi, lalu menulis `logs/verify-<timestamp>.json` dan `.txt` (retensi 60 run).
+`verify-all` menjalankan `doctor` + `scan-secrets` + preflight `sandbox` + setiap
+`adapters/*/verify.ps1`, mencetak tabel seksi, lalu menulis `logs/verify-<timestamp>.json` dan
+`.txt` (retensi 60 run).
 
 ## 2. Status yang dipakai
 
 | Status | Arti | Tindakan |
 |---|---|---|
-| `OK` | memenuhi kriteria | — |
+| `OK` | memenuhi kriteria | - |
 | `INFO` | tidak berlaku / opsional tidak ada | tidak perlu tindakan |
 | `WARN` | jalan, tetapi ada risiko atau pekerjaan tertunda | keputusan manusia; catat alasannya |
 | `FAIL` | melanggar invarian | wajib diperbaiki sebelum pekerjaan dianggap selesai |
@@ -33,14 +34,27 @@ Aturan: **FAIL tidak boleh diabaikan**, WARN tidak boleh menumpuk tanpa catatan.
 - **secrets**: file kredensial tidak boleh berada di dalam hub.
 - **capacity**: ruang disk minimum.
 
-## 4. Menambah pemeriksaan
+## 4. Seksi `sandbox` (batas eksekusi)
+
+| Perintah | Arti | Exit |
+|---|---|---|
+| `sandbox-run.ps1 -Command x -DryRun` | preflight: distro WSL, rootless podman, image dengan digest terpin | 0 siap, 2 BLOCKED |
+
+- Preflight yang gagal menjadi **WARN** secara default, karena mesin tanpa container tetap boleh
+  dipakai untuk pekerjaan non-eksekusi. Pakai `-RequireSandbox` untuk menjadikannya FAIL.
+- `-DeepSandbox` menjalankan `tests/sandbox-selftest.ps1`: 10 kasus yang menguji perilaku nyata
+  (jaringan tertutup, rootfs read-only, `memory.max`, timeout, image asing, kebocoran env, receipt).
+  Ini yang membuat klaim "terisolasi" bisa diperiksa, bukan hanya dipercaya.
+- Gate tidak pernah menarik image dan tidak pernah menjalankan container tanpa permintaan eksplisit.
+
+## 5. Menambah pemeriksaan
 
 1. Taruh di `core/scripts/` bila generik untuk semua mesin.
 2. Taruh di `adapters/<host>/verify.ps1` bila khusus host/modul.
 3. Keluarkan baris ringkas per item + exit code; jangan hanya `Write-Host`.
 4. Daftarkan di `manifest.json` dan sebutkan di README bila ia komponen baru.
 
-## 5. Membaca hasil dari otomasi
+## 6. Membaca hasil dari otomasi
 
 ```powershell
 powershell -File scripts/verify-all.ps1 -NoLog   # tanpa menulis log

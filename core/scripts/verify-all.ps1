@@ -5,17 +5,25 @@
   Runs every objective check that applies on this host and prints a section table:
     doctor   - toolchain, agent surfaces, MCP, repos, secret files, disk
     secrets  - high-confidence credential scan over the hub and the repos you pass
+    sandbox  - execution boundary preflight (rootless podman + pinned image)
     adapters - optional per-host checks found in adapters\<name>\verify.ps1
   Writes logs\verify-<timestamp>.json and .txt next to the hub (git-ignored).
   Exit code 0 = every section OK/WARN/INFO, 1 = at least one FAIL.
+.PARAMETER RequireSandbox
+  Treat an unavailable execution boundary as FAIL instead of WARN.
+.PARAMETER DeepSandbox
+  Also run tests\sandbox-selftest.ps1 (9 observable boundary cases, ~20 s).
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\verify-all.ps1
   powershell -ExecutionPolicy Bypass -File .\verify-all.ps1 -Repos 'C:\work\api' -NoLog
+  powershell -ExecutionPolicy Bypass -File .\verify-all.ps1 -DeepSandbox -RequireSandbox
 #>
 [CmdletBinding()]
 param(
     [string[]]$Repos = @(),
     [string]$HubRoot = '',
+    [switch]$RequireSandbox,
+    [switch]$DeepSandbox,
     [switch]$NoLog
 )
 
@@ -64,6 +72,39 @@ Invoke-Child -Name 'doctor' -ScriptPath (Join-Path $PSScriptRoot 'system-doctor.
 $secretPaths = (@($HubRoot) + $Repos) -join ','
 $secretArgs = @('-Paths', $secretPaths)
 Invoke-Child -Name 'secrets' -ScriptPath (Join-Path $PSScriptRoot 'scan-secrets.ps1') -ScriptArgs $secretArgs
+
+# execution boundary: preflight only (fails closed at run time, not at gate time)
+$sandboxRunner = Join-Path $PSScriptRoot 'sandbox-run.ps1'
+if (-not (Test-Path -LiteralPath $sandboxRunner)) {
+    Add-Section 'sandbox' 'FAIL' 'missing sandbox-run.ps1' @()
+}
+else {
+    $sbOut = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $sandboxRunner -Command 'true' -DryRun 2>&1 | ForEach-Object { $_.ToString() })
+    $sbCode = $LASTEXITCODE
+    $sbHead = ($sbOut | Where-Object { $_.Trim() } | Select-Object -First 1)
+    if ($sbCode -eq 0) {
+        Add-Section 'sandbox' 'OK' 'rootless podman + pinned image ready (preflight)' @()
+    }
+    elseif ($sbCode -eq 2) {
+        Add-Section 'sandbox' $(if ($RequireSandbox) { 'FAIL' } else { 'WARN' }) ('execution boundary unavailable: ' + $sbHead) $sbOut
+    }
+    else {
+        Add-Section 'sandbox' 'WARN' ("preflight exit=$sbCode; $sbHead") $sbOut
+    }
+}
+
+if ($DeepSandbox) {
+    $selftest = Join-Path (Join-Path $HubRoot 'tests') 'sandbox-selftest.ps1'
+    if (-not (Test-Path -LiteralPath $selftest)) { $selftest = Join-Path (Split-Path $PSScriptRoot -Parent) 'tests\sandbox-selftest.ps1' }
+    if (-not (Test-Path -LiteralPath $selftest)) { Add-Section 'sandbox:selftest' 'WARN' 'sandbox-selftest.ps1 not installed' @() }
+    else {
+        $stOut = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $selftest 2>&1 | ForEach-Object { $_.ToString() })
+        $stCode = $LASTEXITCODE
+        $stSummary = ($stOut | Where-Object { $_ -match 'sandbox self-test:' } | Select-Object -Last 1)
+        if ($stCode -eq 0) { Add-Section 'sandbox:selftest' 'OK' $stSummary $stOut }
+        else { Add-Section 'sandbox:selftest' 'FAIL' ("$stSummary") $stOut }
+    }
+}
 
 # optional per-host adapters: adapters\<name>\verify.ps1
 $adapterRoot = Join-Path $HubRoot 'adapters'

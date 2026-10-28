@@ -59,6 +59,26 @@ foreach ($t in $tests) {
     if ($t.result -notin @('pass', 'fail', 'not_run')) {
         Add-Problem ("tests_observed.result invalid: '" + $t.result + "'")
     }
+    # A claimed run may point at a sandbox receipt: then the receipt must exist and agree.
+    if ($t.receipt) {
+        $receiptPath = [string]$t.receipt
+        if (-not (Test-Path -LiteralPath $receiptPath)) {
+            Add-Problem ("receipt not found: " + $receiptPath)
+        }
+        else {
+            try {
+                $rc = [System.IO.File]::ReadAllText($receiptPath) | ConvertFrom-Json
+                if ($null -ne $t.exit_code -and $null -ne $rc.exit_code -and [int]$t.exit_code -ne [int]$rc.exit_code) {
+                    Add-Problem ("receipt exit_code mismatch for '" + $t.command + "' (claimed " + $t.exit_code + ', receipt ' + $rc.exit_code + ')')
+                }
+                if ($t.result -eq 'pass' -and $rc.verdict -and $rc.verdict -ne 'pass') {
+                    Add-Problem ("receipt verdict is '" + $rc.verdict + "' but the test is claimed as pass: " + $receiptPath)
+                }
+                if (-not $rc.image) { Add-Problem ("receipt has no image pin: " + $receiptPath) }
+            }
+            catch { Add-Problem ("receipt is not valid JSON: " + $receiptPath) }
+        }
+    }
 }
 
 # --- verdict-specific gates ---

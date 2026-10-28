@@ -37,7 +37,7 @@ Installer **idempotent**: menjalankan ulang akan memperbarui `scripts/`, `templa
 
 ## 3. Yang dilakukan installer
 
-1. Menyalin core ke target (scripts, templates, githooks, docs, manifest, VERSION).
+1. Menyalin core ke target (scripts, templates, tests, githooks, docs, manifest, VERSION).
 2. Menyalin `skills/` ke setiap surface agen yang **terdeteksi**: `~/.qoder/skills`,
    `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills`.
 3. `git init` (bila belum) + `core.hooksPath` → `githooks/` (penjaga rahasia aktif).
@@ -50,8 +50,11 @@ kredensial, mengubah konfigurasi global agen selain menyalin skill, atau menjala
 ## 4. Setelah instalasi
 
 ```powershell
-# gerbang lengkap: doctor + rahasia + adapter host
+# gerbang lengkap: doctor + rahasia + preflight sandbox + adapter host
 powershell -ExecutionPolicy Bypass -File "$HOME\Efka Engineering System\scripts\verify-all.ps1"
+
+# gerbang + uji batas eksekusi (10 kasus, ±20 detik)
+powershell -ExecutionPolicy Bypass -File "$HOME\Efka Engineering System\scripts\verify-all.ps1" -DeepSandbox
 
 # proyek baru yang langsung patuh baseline
 powershell -ExecutionPolicy Bypass -File "$HOME\Efka Engineering System\scripts\New-EfkaProject.ps1" `
@@ -75,6 +78,28 @@ Template siap pakai di `core/templates/`:
 # validasi keluaran review (exit 1 = kontrak dilanggar)
 Get-Content .\review.json -Raw | powershell -File "$HOME\Efka Engineering System\scripts\validate-review.ps1"
 ```
+
+## 4c. Batas eksekusi (butuh rootless Podman di WSL)
+
+Installer tidak memasang Podman dan tidak menarik image. Bila kamu ingin menjalankan perintah
+di dalam batas:
+
+```bash
+# sekali saja, di distro WSL kamu
+podman pull docker.io/library/alpine:3.20
+podman inspect --format '{{index .RepoDigests 0}}' docker.io/library/alpine:3.20
+```
+
+Lalu jalankan dengan digest hasil `inspect`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$HOME\Efka Engineering System\scripts\sandbox-run.ps1" `
+  -Command 'ls /work' -WorkDir 'C:\Projects\my-api' `
+  -Image 'docker.io/library/alpine@sha256:<digest>'
+```
+
+Tanpa Podman atau image, perintah berhenti dengan `BLOCKED` (exit 2) - tidak ada fallback ke shell
+host. Detail kontrol dan batasnya: [docs/SANDBOX.md](SANDBOX.md).
 
 ## 5. Kredensial
 
@@ -123,3 +148,5 @@ dan tidak mengubah PATH.
 | skill tidak muncul di agen | agen perlu restart | restart Qoder/OpenCode, lalu ketik `/` |
 | `git commit` ditolak `secret-guard` | ada pola kredensial di working tree | hapus/ignore file itu; `--no-verify` hanya bila yakin |
 | installer tidak menemukan `core/` | dijalankan lewat pipe tanpa file | biarkan installer mengunduh sendiri (`irm ... | iex`) |
+| `BLOCKED: image not usable` | image belum ada atau digest tidak cocok | `podman pull` image yang dipin, lalu cocokkan digest dengan `podman inspect` |
+| `BLOCKED: WSL distro ... not available` | nama distro berbeda | jalankan dengan `-Distro '<nama>'` (lihat `wsl -l -q`) |

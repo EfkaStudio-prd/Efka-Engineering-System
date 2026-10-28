@@ -13,9 +13,9 @@ __pycache__/
 .opencode-mem/
 .codegraph/
 
-# gate output (any depth) and local scratch
-**/logs/*.json
-**/logs/*.txt
+# gate + executor output (any depth, including logs/sandbox/)
+logs/
+**/logs/
 *.bak
 *.tmp
 .tmp/

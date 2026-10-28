@@ -1,11 +1,11 @@
-# SCORE — seberapa siap sistem ini untuk engineering
+# SCORE - seberapa siap sistem ini untuk engineering
 
 Dua rubrik, dua pertanyaan. Jangan dicampur.
 
 | Pertanyaan | Skor | Arti |
 |---|---|---|
 | Apakah infrastruktur/pengelolaannya rapi? | **85 / 100** | dokumen, gate, hook, skill, version control, observabilitas |
-| Apakah sistem mampu *menghasilkan software berkualitas secara konsisten*? | **52 / 100** | kematangan harness engineering (level 2 dari 5) |
+| Apakah sistem mampu *menghasilkan software berkualitas secara konsisten*? | **66 / 100** | kematangan harness engineering (level 3 dari 5) |
 
 Rubrik kedua diturunkan dari lapisan riset R0/R1: isolasi eksekusi, kontrak pekerjaan, evidence,
 verifier independen, kontrak review, memori, observabilitas, eval.
@@ -13,32 +13,41 @@ verifier independen, kontrak review, memori, observabilitas, eval.
 | Lapisan | Bobot | Skor | Kondisi sekarang |
 |---|---|---|---|
 | Version control & kontrol perubahan | 8 | 9 | repo + tag + hook rahasia; belum ada remote otomatis |
-| Gerbang verifikasi otomatis | 10 | 9 | doctor + gate + exit code + adapter modul |
-| Eksekusi terisolasi | 15 | **2** | belum ada eksekusi kerja di dalam boundary |
-| Kontrak pekerjaan | 12 | **4** | `TASK_CONTRACT` + JobState terdokumentasi; **belum ditegakkan** |
-| Evidence receipt per aksi | 10 | **2** | template ada; pengumpulan masih manual |
+| Gerbang verifikasi otomatis | 10 | 9 | doctor + gate + exit code + adapter modul + seksi sandbox |
+| Eksekusi terisolasi | 15 | **8** | `sandbox-run.ps1`: image dipin, tanpa jaringan, rootfs read-only, satu mount, non-root, limit memori/CPU/PID, timeout + cleanup, fail-closed; 10 fault test hijau |
+| Kontrak pekerjaan | 12 | **4** | `TASK_CONTRACT` + JobState terdokumentasi; **belum ditegakkan mesin** |
+| Evidence receipt per aksi | 10 | **7** | receipt otomatis per eksekusi (image pin, limit, exit, hash output) + validator menolak klaim yang tidak cocok; aksi non-sandbox belum otomatis |
 | Verifier independen | 10 | 3 | verifikasi fakta ada; reviewer terpisah belum |
-| Kontrak review + independence | 8 | **6** | schema + `validate-review` menegakkan `approve` butuh tes lulus |
+| Kontrak review + independence | 8 | 6 | schema + `validate-review` menegakkan `approve` butuh tes lulus dan receipt yang konsisten |
 | Memori & konteks | 10 | 7 | MEMORY.md + HANDOFF template; belum jadi kebiasaan terukur |
-| Observabilitas & eval | 9 | 5 | log + retensi; matriks eval belum |
+| Observabilitas & eval | 9 | 5 | log gate + receipt + retensi; matriks eval belum |
 | Toolchain | 8 | 8 | pwsh/jq/gh/rg terdeteksi (termasuk di luar PATH) |
 
-**Tertimbang: ±52/100.** Level: *contracted but unguarded* — kontrak dan gerbang sudah ada,
-tetapi eksekusi belum berjalan di dalam batas yang bisa ditegakkan.
+**Tertimbang: ±66/100.** Level: *guarded execution* - pekerjaan sekarang berjalan di dalam batas
+yang bisa ditegakkan dan meninggalkan bukti, tetapi belum ada evaluasi berkala maupun reviewer kedua.
 
-## Jalur ke 80
+## Bukti kenaikan 52 -> 66
+
+| Perubahan | Bukti |
+|---|---|
+| Boundary eksekusi benar-benar menahan | `tests/sandbox-selftest.ps1`: T1 jalan, T2 jaringan tertutup, T3 rootfs read-only, T4 tmpfs, T5 mount read-only, T6 timeout, T7 `memory.max` = 67108864, T8 image asing BLOCKED, T9 env tidak bocor, T10 receipt valid |
+| Bukti otomatis, bukan klaim | setiap run menulis `logs/sandbox/*.json` dengan `image`, `limits`, `exit_code`, `output.sha256` |
+| Klaim review harus cocok dengan bukti | `validate-review.ps1` menolak `receipt` yang hilang, `exit_code` berbeda, atau verdict receipt bukan `pass` |
+| Gate tahu batasnya | `verify-all.ps1` menambah seksi `sandbox` (preflight) dan `-DeepSandbox` untuk 10 kasus penuh |
+
+## Jalur ke 82
 
 | Fase | Isi | Skor |
 |---|---|---|
-| P1 | executor terisolasi (image dipin, `--network none`, read-only, limit) + 8 fault test | 52 → 66 |
-| P2 | pengumpulan receipt otomatis dari harness + reviewer kedua independen | 66 → 74 |
-| P3 | eval berkala (matrix 12 kasus) + CI menjalankan gate di setiap PR | 74 → 82 |
+| ~~P1~~ | ~~executor terisolasi + fault test~~ | 52 -> 66 (selesai) |
+| P2 | penegakan TaskSpec oleh mesin (admission: tolak task tanpa acceptance/limit) + reviewer kedua independen | 66 -> 74 |
+| P3 | eval berkala (matriks 12 kasus, hasil JSON + tren) + CI menjalankan gate di setiap PR | 74 -> 82 |
 
 ## Cara mengukur ulang
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/verify-all.ps1
+powershell -ExecutionPolicy Bypass -File scripts/verify-all.ps1 -DeepSandbox
 ```
 
 Skor ini penilaian berbobot terhadap rubrik di halaman ini, bukan benchmark eksternal. Setiap
-kenaikan harus disertai bukti baru (tes hijau, log, receipt) — bukan klaim.
+kenaikan harus disertai bukti baru (tes hijau, log, receipt) - bukan klaim.
