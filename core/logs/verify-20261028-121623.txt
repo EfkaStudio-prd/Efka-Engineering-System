@@ -1,0 +1,9 @@
+﻿
+Section  Status Detail                                                                           
+-------  ------ ------                                                                           
+doctor   OK     exit=0;  | doctor: OK=16 WARN=1 FAIL=0                                           
+secrets  FAIL   exit=1;     + FullyQualifiedErrorId : NamedParameterNotFound,scan-secrets.ps1 |  
+adapters INFO   no adapters/ directory                                                           
+
+
+

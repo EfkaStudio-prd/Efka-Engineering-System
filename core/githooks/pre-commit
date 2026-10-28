@@ -1,0 +1,48 @@
+#!/bin/sh
+# secret-guard: pre-commit hook shared by all Efka Engineering System repos
+# (wired through `git config core.hooksPath`). Blocks a commit when the working
+# tree contains high-confidence credential patterns. Bypass intentionally with:
+#   git commit --no-verify
+set -u
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+scanner="$hook_dir/../scripts/scan-secrets.ps1"
+
+if [ ! -f "$scanner" ]; then
+    echo "secret-guard: scanner missing at $scanner - allowing commit" >&2
+    exit 0
+fi
+
+to_win() {
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -m "$1"
+    else
+        printf '%s' "$1" | sed 's|^/\([a-zA-Z]\)/|\1:/|'
+    fi
+}
+
+win_scanner=$(to_win "$scanner")
+win_root=$(to_win "$repo_root")
+
+ps_exe=powershell.exe
+command -v "$ps_exe" >/dev/null 2>&1 || ps_exe=powershell
+if ! command -v "$ps_exe" >/dev/null 2>&1; then
+    echo "secret-guard: PowerShell not found - allowing commit" >&2
+    exit 0
+fi
+
+output=$("$ps_exe" -NoProfile -ExecutionPolicy Bypass -File "$win_scanner" -Paths "$win_root" 2>&1)
+status=$?
+
+if [ "$status" -ne 0 ]; then
+    echo "" >&2
+    echo "=== secret-guard: commit blocked ===" >&2
+    printf '%s\n' "$output" | sed -n '1,25p' >&2
+    echo "" >&2
+    echo "Remove the file from the commit (git rm --cached <path>) or add it to .gitignore." >&2
+    echo "Only use 'git commit --no-verify' if you are certain the value is not a real secret." >&2
+    exit 1
+fi
+
+exit 0

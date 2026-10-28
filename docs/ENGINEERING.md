@@ -62,7 +62,7 @@ Unlimited: permission allow, compaction auto false, tool_output 20k/1MB, memory 
       "name": "9Router Gateway",
       "options": {
         "baseURL": "http://127.0.0.1:20128/v1",
-        "apiKey": "sk-c5a12068ba317f6e-qta4gv-46d33a60",
+        "apiKey": "{env:EFKA_9ROUTER_KEY}",
         "timeout": 300000,
         "chunkTimeout": 60000
       }
@@ -166,7 +166,7 @@ journalctl --vacuum-size=50M && uv cache clean # 81M→48M, 412M→0
 
 # 2. 9Router (fallback)
 cat /etc/systemd/system/9router.service # ExecStart 9router -n --host 127.0.0.1
-curl -H "Authorization: Bearer sk-c5a12068ba317f6e-qta4gv-46d33a60" http://127.0.0.1:20128/v1/models | jq length # 700
+curl -H "Authorization: Bearer $EFKA_9ROUTER_KEY" http://127.0.0.1:20128/v1/models | jq length # 700
 # → buka http://127.0.0.1:20128 tambah providerConnections agar chat ok
 
 # 3. opencode core
@@ -193,10 +193,17 @@ opencode debug config # must be green, default_agent master-orchestrator
 
 ---
 
-## 10. Firecrawl API Key (Active)
-- `FIRECRAWL_API_KEY=fc-8eeee0e1e1a34624befedeb54b8a31bc` (`export` di `~/.bashrc`, `~/.config/opencode/opencode.jsonc:firecrawl` remote `https://mcp.firecrawl.dev/v2/mcp` `Authorization: Bearer`)
-- Test `curl -H "Authorization: Bearer fc-..." https://api.firecrawl.dev/v2/scrape -d '{"url":"https://example.com"}' → `success:true creditsUsed:1`
-- MCP `firecrawl` sekarang `✓` remote (was `✗` local `npx firecrawl-mcp` bug `ERR_MODULE_NOT_FOUND` di Node24), restart untuk connect.
+## 10. Kredensial — tidak pernah di-commit
+
+Semua kredensial dibaca dari environment, bukan ditulis di file:
+
+- `EFKA_9ROUTER_KEY` → API key 9Router (dashboard `http://127.0.0.1:20128` → API Keys)
+- `FIRECRAWL_API_KEY`, `TAVILY_API_KEY`, `EXA_API_KEY`, `BRAVE_API_KEY` → MCP research
+
+Set di shell profile atau `mcp.environment: "{env:...}"`. Contoh variabel ada di
+`secrets.example.env`. Nilai asli tidak boleh masuk repo — `core/scripts/scan-secrets.ps1`
+(dipasang sebagai git hook oleh installer) akan menolak commit yang memuatnya.
+- MCP `firecrawl` memakai endpoint remote (`https://mcp.firecrawl.dev/v2/mcp`); restart OpenCode setelah mengubah env agar ter-connect.
 
 ## 10. Score & Production Checklist
 

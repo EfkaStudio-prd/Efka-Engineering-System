@@ -1,0 +1,31 @@
+{
+  "name": "Efka Engineering System",
+  "version": "2.0.0",
+  "updated": "2026-10-28",
+  "repo": "https://github.com/EfkaStudio-prd/Efka-Engineering-System",
+  "entrypoints": {
+    "windows": "install.ps1",
+    "unix": "install.sh"
+  },
+  "components": [
+    { "id": "doctor", "path": "core/scripts/system-doctor.ps1", "purpose": "readiness of toolchain, agent surfaces, MCP, repos, secret files, disk", "status": "stable" },
+    { "id": "gate", "path": "core/scripts/verify-all.ps1", "purpose": "one-command production gate with JSON/TXT logs and 60-run retention", "status": "stable" },
+    { "id": "secret-scan", "path": "core/scripts/scan-secrets.ps1", "purpose": "high-confidence credential scan by filename and content", "status": "stable" },
+    { "id": "scaffold", "path": "core/scripts/New-EfkaProject.ps1", "purpose": "new project with AGENTS.md, .gitignore, .gitattributes, check.ps1, git baseline", "status": "stable" },
+    { "id": "secret-guard", "path": "core/githooks/pre-commit", "purpose": "blocks commits containing credential patterns", "status": "stable" },
+    { "id": "templates", "path": "core/templates", "purpose": "AGENTS.md skeleton for projects", "status": "stable" },
+    { "id": "skills", "path": "skills", "purpose": "agent skills: efka-system-doctor, wsl-podman-service", "status": "stable" },
+    { "id": "handbook", "path": "docs", "purpose": "inventory, skill catalog, MCP, memory rules, roadmap, foundations, toolchain", "status": "stable" },
+    { "id": "opencode-lane", "path": "opencode", "purpose": "OpenCode agent/skills/commands configuration (installed with -Profile full)", "status": "experimental" }
+  ],
+  "invariants": [
+    "no credential values in the repository; configuration reads them from environment variables",
+    "one authoritative copy; installs are generated from this repository",
+    "every check is read-only and returns a meaningful exit code",
+    "unsupported capability means BLOCKED, never a silent fallback"
+  ],
+  "adapters": {
+    "description": "Host-specific layers live outside core/ and are never copied into other machines.",
+    "example": "adapters/<name>/verify.ps1 is executed automatically by the gate when present"
+  }
+}

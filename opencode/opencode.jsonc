@@ -8,7 +8,7 @@
   "share": "manual",
   "snapshot": true,
   // === 9Router as OpenAI-compatible provider ===
-  // API key diambil dari sqlite ~/.9router/db/data.sqlite apiKeys sk-c5a12068ba317f6e-qta4gv-46d33a60
+  // API key diambil dari env EFKA_9ROUTER_KEY (dashboard 9Router → API Keys)
   // Setup fallback: semua model 9router dirutekan lewat localhost:20128
   // Catatan: aktifkan provider di 9Router dashboard (http://127.0.0.1:20128) agar chat tidak error "No active credentials"
   // 9Router — expose ALL 700 models, no whitelist. opencode fetches via GET /v1/models.
@@ -19,7 +19,7 @@
       "name": "9Router Gateway",
       "options": {
         "baseURL": "http://127.0.0.1:20128/v1",
-        "apiKey": "sk-c5a12068ba317f6e-qta4gv-46d33a60",
+        "apiKey": "{env:EFKA_9ROUTER_KEY}",
         "timeout": 300000,
         "chunkTimeout": 60000
       }
@@ -94,7 +94,7 @@
       "url": "https://mcp.firecrawl.dev/v2/mcp",
       "enabled": true,
       "headers": {
-        "Authorization": "Bearer fc-8eeee0e1e1a34624befedeb54b8a31bc"
+        "Authorization": "Bearer {env:FIRECRAWL_API_KEY}"
       }
     },
     "tavily": {

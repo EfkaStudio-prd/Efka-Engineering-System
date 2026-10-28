@@ -1,4 +1,21 @@
+# secrets and local state — never commit
+.env
+.env.*
+secrets.example.env.local
+*.local
+mcp-router.json
+*_tokens.json
+
+# agent/runtime caches that occasionally land here
+node_modules/
+__pycache__/
+.venv/
 .opencode-mem/
 .codegraph/
-node_modules/
-.env
+
+# gate output and local scratch
+logs/*.json
+logs/*.txt
+*.bak
+*.tmp
+.tmp/
