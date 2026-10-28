@@ -5,25 +5,44 @@ template di `core/templates/`.
 
 | Kontrak | Template | Dipakai kapan | Penegak |
 |---|---|---|---|
-| **Task** | `TASK_CONTRACT.md` | sebelum menulis kode | manusia + review |
+| **Task** | `TASK_CONTRACT.md` | sebelum menulis kode | `scripts/admit-task.ps1` (admission) + review |
 | **Evidence** | `EVIDENCE_RECEIPT.md` | setiap aksi bermutasi | otomatis untuk eksekusi (`sandbox-run.ps1`) + review |
 | **Review** | `review-output.schema.json` | sebelum merge | `scripts/validate-review.ps1` |
 | **Handoff** | `HANDOFF.md` | pindah sesi/agen, atau konteks penuh | manusia |
 
 ## 1. Aturan yang membuat kontrak ini berguna
 
-1. **Tanpa bukti bukan temuan.** Finding tanpa kutipan/output atau langkah reproduksi ditolak
+1. **Tidak ada admission, tidak ada kerja.** `scripts/admit-task.ps1` menolak kontrak tanpa
+   `job_id`, goal yang bisa diuji, `scope`, minimal satu perintah `acceptance`, `stop_condition`,
+   `limits.timeout_min`, dan `limits.trust_profile`. `execute-sandboxed` juga wajib image ber-digest.
+   Hanya kontrak yang lolos yang menghasilkan `logs/jobs/<job_id>/state.json`.
+2. **Tanpa bukti bukan temuan.** Finding tanpa kutipan/output atau langkah reproduksi ditolak
    validator (`evidence` < 8 karakter).
-2. **`approve` butuh tes yang benar-benar jalan**: minimal satu entri `tests_observed` dengan
+3. **`approve` butuh tes yang benar-benar jalan**: minimal satu entri `tests_observed` dengan
    `result: pass` dan `exit_code: 0`, serta tidak ada finding `critical`/`high`.
-3. **Klaim harus cocok dengan receipt.** Bila entri `tests_observed` menyertakan `receipt`,
+4. **Klaim harus cocok dengan receipt.** Bila entri `tests_observed` menyertakan `receipt`,
    validator membuka file receipt itu dan menolak bila: file tidak ada, `exit_code` berbeda,
    verdict receipt bukan `pass` padahal tes diklaim `pass`, atau receipt tidak memuat pin image.
-4. **`not_run` bukan hasil.** Boleh dicatat, tidak boleh dipakai untuk menyatakan selesai.
-5. **Independensi diakui, bukan diklaim.** Reviewer dengan model/upstream sama menulis
+5. **`not_run` bukan hasil.** Boleh dicatat, tidak boleh dipakai untuk menyatakan selesai.
+6. **Independensi diakui, bukan diklaim.** Reviewer dengan model/upstream sama menulis
    `independent: false`; keputusan merge oleh manusia tetap sadar akan hal itu.
-6. **Non-idempoten butuh `operation_id`.** Tanpa itu, pekerjaan yang terputus berstatus
+7. **Non-idempoten butuh `operation_id`.** Tanpa itu, pekerjaan yang terputus berstatus
    `reconciliation_required`, bukan diulang buta.
+
+## 1b. Contoh admission
+
+```powershell
+# kontrak valid (template yang dikirim sudah lolos)
+powershell -File scripts/admit-task.ps1 -Path docs/tasks/20261028-add-login.md
+# task ADMITTED: job_id=20261028-add-login trust=execute-sandboxed timeout=90m acceptance=1 scope=1   (exit 0)
+
+# kontrak tanpa acceptance
+# task REJECTED: 1 problem(s)
+#   - acceptance must list at least one command that proves the goal                              (exit 1)
+```
+
+State job menyimpan goal, scope, acceptance, stop_condition, limit, dan image - sehingga eksekusi
+dan review bisa merujuk `job_id` yang sama.
 
 ## 2. Bentuk receipt yang dihasilkan sistem
 
@@ -77,12 +96,13 @@ Get-Content .\review.json -Raw | .\scripts\validate-review.ps1
 
 ## 4. Yang belum ditegakkan (jujur)
 
-- **TaskSpec belum ditegakkan mesin.** Belum ada admission control yang menolak task tanpa
-  acceptance criteria, budget, atau stop condition. Saat ini masih disiplin manusia + review.
+- **Scope belum dimonitor.** Admission membatasi scope di atas kertas; belum ada pemeriksa yang
+  membandingkan perubahan nyata dengan `scope` setelah eksekusi. Rencana: bandingkan `git diff
+  --name-only` dengan `state.json` sebelum review.
 - **Receipt baru otomatis untuk eksekusi.** Edit file, keputusan desain, dan review belum
   menghasilkan receipt otomatis; itu dicatat manual di `HANDOFF.md`/review JSON.
 - **Independensi reviewer masih flag.** Belum ada mekanisme yang membuktikan reviewer memakai
   model/upstream berbeda.
 
-Fase berikutnya (lihat `docs/SCORE.md`): admission control untuk TaskSpec dan reviewer kedua
-independen (P2), lalu matriks eval + CI (P3).
+Fase berikutnya (lihat `docs/SCORE.md`): pemantauan scope + reviewer kedua independen (P2), lalu
+matriks eval + CI (P3).

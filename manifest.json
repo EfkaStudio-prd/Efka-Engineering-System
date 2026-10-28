@@ -1,6 +1,6 @@
 {
   "name": "Efka Engineering System",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "updated": "2026-10-28",
   "repo": "https://github.com/EfkaStudio-prd/Efka-Engineering-System",
   "scope": "Standalone control layer: readiness, gates, a fail-closed execution boundary, contracts, and evidence. Other systems (model gateway, eval, agent runtimes) are external modules that are verified, never installed.",
@@ -13,6 +13,8 @@
     { "id": "gate", "path": "core/scripts/verify-all.ps1", "purpose": "doctor + secret scan + sandbox preflight + every adapters/*/verify.ps1, with JSON/TXT logs and 60-run retention", "status": "stable" },
     { "id": "executor", "path": "core/scripts/sandbox-run.ps1", "purpose": "fail-closed execution boundary: pinned image, no network, read-only rootfs, single mount, non-root, memory/cpu/pid limits, timeout, evidence receipt", "status": "stable" },
     { "id": "executor-selftest", "path": "core/tests/sandbox-selftest.ps1", "purpose": "10 observable cases proving the boundary holds (network, rootfs, mount, limits, timeout, env, receipt)", "status": "stable" },
+    { "id": "admission", "path": "core/scripts/admit-task.ps1", "purpose": "refuses task contracts without a testable goal, bounded scope, acceptance commands, stop condition, time budget and trust profile; writes logs/jobs/<job_id>/state.json", "status": "stable" },
+    { "id": "admission-selftest", "path": "core/tests/admit-task-selftest.ps1", "purpose": "5 cases: template admitted, missing acceptance / unpinned sandbox image / malformed job_id rejected, JSON input accepted", "status": "stable" },
     { "id": "secret-scan", "path": "core/scripts/scan-secrets.ps1", "purpose": "high-confidence credential scan by filename and content", "status": "stable" },
     { "id": "review-validator", "path": "core/scripts/validate-review.ps1", "purpose": "enforces the review contract: evidence per finding, observed tests for approve, independence flag, receipt agreement", "status": "stable" },
     { "id": "scaffold", "path": "core/scripts/New-EfkaProject.ps1", "purpose": "new project with AGENTS.md, .gitignore, .gitattributes, check.ps1, git baseline", "status": "stable" },
@@ -33,7 +35,8 @@
     "unsupported capability means BLOCKED, never a silent fallback",
     "a review finding without evidence is rejected by the validator",
     "a test claimed as pass must match the receipt the executor wrote",
-    "images are pulled by a human, never by the system"
+    "images are pulled by a human, never by the system",
+    "work does not start without an admitted task contract"
   ],
   "adapters": {
     "description": "Host/module-specific layers live outside core/ and are never copied to other machines.",

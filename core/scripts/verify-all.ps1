@@ -12,7 +12,8 @@
 .PARAMETER RequireSandbox
   Treat an unavailable execution boundary as FAIL instead of WARN.
 .PARAMETER DeepSandbox
-  Also run tests\sandbox-selftest.ps1 (9 observable boundary cases, ~20 s).
+  Also run tests\sandbox-selftest.ps1 (10 boundary cases) and tests\admit-task-selftest.ps1
+  (5 contract cases), about 25 s in total.
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\verify-all.ps1
   powershell -ExecutionPolicy Bypass -File .\verify-all.ps1 -Repos 'C:\work\api' -NoLog
@@ -103,6 +104,17 @@ if ($DeepSandbox) {
         $stSummary = ($stOut | Where-Object { $_ -match 'sandbox self-test:' } | Select-Object -Last 1)
         if ($stCode -eq 0) { Add-Section 'sandbox:selftest' 'OK' $stSummary $stOut }
         else { Add-Section 'sandbox:selftest' 'FAIL' ("$stSummary") $stOut }
+    }
+
+    $admitTest = Join-Path (Join-Path $HubRoot 'tests') 'admit-task-selftest.ps1'
+    if (-not (Test-Path -LiteralPath $admitTest)) { $admitTest = Join-Path (Split-Path $PSScriptRoot -Parent) 'tests\admit-task-selftest.ps1' }
+    if (-not (Test-Path -LiteralPath $admitTest)) { Add-Section 'contracts:selftest' 'WARN' 'admit-task-selftest.ps1 not installed' @() }
+    else {
+        $cOut = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $admitTest 2>&1 | ForEach-Object { $_.ToString() })
+        $cCode = $LASTEXITCODE
+        $cSummary = ($cOut | Where-Object { $_ -match 'admission self-test:' } | Select-Object -Last 1)
+        if ($cCode -eq 0) { Add-Section 'contracts:selftest' 'OK' $cSummary $cOut }
+        else { Add-Section 'contracts:selftest' 'FAIL' ("$cSummary") $cOut }
     }
 }
 

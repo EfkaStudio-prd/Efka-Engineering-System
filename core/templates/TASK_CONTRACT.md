@@ -3,6 +3,26 @@
 Diisi **sebelum** pekerjaan dimulai. Satu file per pekerjaan; simpan di `docs/tasks/<tanggal>-<slug>.md`.
 Tanpa kontrak, agen tidak boleh mulai menulis kode.
 
+Blok di bawah ini **dibaca mesin**. `scripts/admit-task.ps1` menolak task yang tidak memenuhinya
+(exit 1 + daftar masalah), lalu menulis `logs/jobs/<job_id>/state.json` berstatus `admitted`.
+
+```yaml
+---
+job_id: 20261028-example-slug          # unik, dipakai sebagai nama folder job
+goal: Satu kalimat hasil yang bisa diuji (minimal 10 karakter)
+scope:                                 # direktori/file yang boleh disentuh
+  - src/
+  - tests/
+acceptance:                            # perintah yang harus lulus, persis apa adanya
+  - powershell -File ./check.ps1
+stop_condition: Berhenti dan tulis handoff bila acceptance gagal 2x berturut-turut
+limits:
+  timeout_min: 90
+  trust_profile: execute-sandboxed      # read-only | write-scoped | execute-sandboxed
+image: docker.io/library/alpine@sha256:c64c687cbea9300178b30c95835354e34c4e4febc4badfe27102879de0483b5e
+---
+```
+
 ## 1. TaskSpec
 
 | Field | Isi |
@@ -43,6 +63,7 @@ command/argv, exit code, output (dipotong + hash), diff, verifier result, risiko
 
 ## 5. Definition of done
 
+- [ ] task sudah `admitted` oleh `scripts/admit-task.ps1` (state.json ada)
 - [ ] semua perintah acceptance dijalankan **dan** hasilnya dilampirkan
 - [ ] tidak ada perubahan di luar `scope`
 - [ ] `check.ps1` proyek hijau

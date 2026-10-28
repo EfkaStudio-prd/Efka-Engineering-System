@@ -42,9 +42,9 @@ Aturan: **FAIL tidak boleh diabaikan**, WARN tidak boleh menumpuk tanpa catatan.
 
 - Preflight yang gagal menjadi **WARN** secara default, karena mesin tanpa container tetap boleh
   dipakai untuk pekerjaan non-eksekusi. Pakai `-RequireSandbox` untuk menjadikannya FAIL.
-- `-DeepSandbox` menjalankan `tests/sandbox-selftest.ps1`: 10 kasus yang menguji perilaku nyata
-  (jaringan tertutup, rootfs read-only, `memory.max`, timeout, image asing, kebocoran env, receipt).
-  Ini yang membuat klaim "terisolasi" bisa diperiksa, bukan hanya dipercaya.
+- `-DeepSandbox` menjalankan dua self-test: `tests/sandbox-selftest.ps1` (10 kasus batas eksekusi)
+  dan `tests/admit-task-selftest.ps1` (5 kasus admission kontrak). Ini yang membuat klaim
+  "terisolasi" dan "kontrak ditegakkan" bisa diperiksa, bukan hanya dipercaya.
 - Gate tidak pernah menarik image dan tidak pernah menjalankan container tanpa permintaan eksplisit.
 
 ## 5. Menambah pemeriksaan
